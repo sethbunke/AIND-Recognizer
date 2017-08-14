@@ -92,8 +92,62 @@ class SelectorDIC(ModelSelector):
     def select(self):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+
         # TODO implement model selection based on DIC scores
-        raise NotImplementedError
+        print('Now running DIC Selector for word= ',self.this_word)
+
+        best_model = GaussianHMM()
+        best_score = float("-inf")
+
+            # Incrementally test models with one more component each time
+        for n in range(self.min_n_components, self.max_n_components + 1):
+            try:
+                print('Processing component ', n, 'building model')
+                # Create model using n components and fit with data for this word then score it
+                model = GaussianHMM(n_components=n, covariance_type="diag", n_iter=1000,
+                                    random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+                print('Model built..now to score it')
+                score_ThisWord = model.score(self.X, self.lengths)  # score the model on this word
+                print('This word score=', score_ThisWord,'Next calcualte how the model score on all the other words...')
+
+                #Score the same model for all other words
+                AvgScore_OtherWords = self.GetScoreforOtherWords(model)
+                print('Other words  score=', AvgScore_OtherWords)
+
+                #DIC is the difference between score_this word and aver score other words
+                DIC_score = score_ThisWord - AvgScore_OtherWords
+                print('DIC Score and current best_score', DIC_score, best_score)
+
+                # Store best DIC score (highest) and corresponding best model
+                if DIC_score > best_score:
+                    best_score = BIC_score
+                    best_model = model
+                    print('New best_score', best_score)
+
+            except:
+                pass
+                #print('Error')
+
+        # Return model
+        return best_model
+
+    def GetScoreforOtherWords(self, model):
+        #Loop round array of words processing all words expect the current one
+        print('Now caculating average score for the model across the ther words...')
+        word_count = 0
+        total_score = 0
+        for word, features in self.hwords.items(): #list of words and their corresponding data sets
+            if self.this_word != word:
+                X, lengths = features
+                try:
+                    score_word = model.score(X, lengths)  # score the model on word
+                    total_score = total_score + score_word
+                    word_count = word_count + 1
+                except: #catch errors that may be generated
+                    pass
+        average_score = total_score/word_count
+        return average_score
+
 
 
 class SelectorCV(ModelSelector):
