@@ -94,41 +94,32 @@ class SelectorDIC(ModelSelector):
 
 
         # TODO implement model selection based on DIC scores
-        print('Now running DIC Selector for word= ',self.this_word)
 
         best_model = GaussianHMM()
         best_score = float("-inf")
-
-            # Incrementally test models with one more component each time
-        for n in range(self.min_n_components, self.max_n_components + 1):
+        for n_components in range(self.min_n_components, self.max_n_components + 1):
             try:
-                print('Processing component ', n, 'building model')
-                # Create model using n components and fit with data for this word then score it
-                model = GaussianHMM(n_components=n, covariance_type="diag", n_iter=1000,
-                                    random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
-                print('Model built..now to score it')
-                score_ThisWord = model.score(self.X, self.lengths)  # score the model on this word
-                print('This word score=', score_ThisWord,'Next calcualte how the model score on all the other words...')
-
-                #Score the same model for all other words
-                AvgScore_OtherWords = self.GetScoreforOtherWords(model)
-                print('Other words  score=', AvgScore_OtherWords)
-
-                #DIC is the difference between score_this word and aver score other words
-                DIC_score = score_ThisWord - AvgScore_OtherWords
-                print('DIC Score and current best_score', DIC_score, best_score)
-
-                # Store best DIC score (highest) and corresponding best model
-                if DIC_score > best_score:
-                    best_score = BIC_score
+                model = GaussianHMM(n_components=n_components, covariance_type="diag", n_iter=1000,random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+                current_word_score = model.score(self.X, self.lengths)
+                word_cnt = 0
+                total_score = 0
+                for word, features in self.hwords.items():
+                    if self.this_word == word:
+                        continue
+                    x, lengths = features
+                    try:
+                        score_word = model.score(x, lengths)  
+                        total_score = total_score + score_word
+                        word_cnt = word_cnt + 1
+                    except: 
+                        pass
+                average_score = total_score / word_cnt
+                diff_of_scores = current_word_score - average_score
+                if diff_of_scores > best_score:
+                    best_score = diff_of_scores
                     best_model = model
-                    print('New best_score', best_score)
-
             except:
                 pass
-                #print('Error')
-
-        # Return model
         return best_model
 
     def GetScoreforOtherWords(self, model):
