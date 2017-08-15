@@ -77,7 +77,44 @@ class SelectorBIC(ModelSelector):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # TODO implement model selection based on BIC scores
-        raise NotImplementedError
+        #raise NotImplementedError
+
+        # best_score = float("-inf")
+        # best_model = GaussianHMM()
+
+        # for num_states in range(self.min_n_components, self.max_n_components + 1):
+        #     #try:
+        #         model = GaussianHMM(n_components=num_states, covariance_type="diag", n_iter=1000, random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+        #         logL = model.score(self.X, self.lengths)
+
+        #         parameters = num_states * num_states + 2 * num_states * len(self.X[0]) - 1
+        #         bic = (-2) * logL + math.log(len(self.X)) * parameters
+
+        #         if bic < best_score:
+        #             best_score = bic
+        #             best_model = model
+
+        #     #except:
+        #     #    pass
+
+        # return best_model
+
+
+        best_model = GaussianHMM()
+        best_score = float("inf")
+        for n_components in range(self.min_n_components, self.max_n_components + 1):
+            try:
+                model = GaussianHMM(n_components=n_components, covariance_type="diag", n_iter=1000,random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+                score = model.score(self.X, self.lengths)
+                parameters = n_components * n_components + 2 * len(self.X[0]) - 1
+                bic = (-2) * score + math.log(len(self.X)) * parameters
+
+                if bic < best_score:
+                    best_score = bic
+                    best_model = model
+            except:
+                pass
+        return best_model 
 
 
 class SelectorDIC(ModelSelector):
