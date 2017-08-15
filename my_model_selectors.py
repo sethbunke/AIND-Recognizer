@@ -186,30 +186,73 @@ class SelectorCV(ModelSelector):
     def select(self):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        print('my test')
+        # TODO implement model selection using CV
         best_score = float('-inf')
-        best_model = GaussianHMM()
-        n_splits = 3
+        #split_method = KFold()
+        
+        split_method = KFold(n_splits=min(3,len(self.sequences)))
+        best_model =  None
 
-        if len(self.sequences) < n_splits:
-            n_splits = len(self.sequences)
+        for num_of_states in range(self.min_n_components, self.max_n_components +1):
+            folds = 0
+            total_logL = 0
 
-        split_method = KFold(n_splits) 
-        #split_method = KFold()        
-        #num_hidden_states = self.max_n_components - self.min_n_components
-        for n_components in range(self.min_n_components, self.max_n_components + 1):
-            for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
-                #X, lengths = cv_train_idx.get_word_Xlengths(self.words)
-                X_train, lengths_train = combine_sequences(cv_train_idx, self.sequences)
-                X_test, lengths_test = combine_sequences(cv_test_idx, self.sequences)
-                model = GaussianHMM(n_components=n_components, n_iter=1000).fit(X_train, lengths_train)
-                try:
-                    log_L = model.score(X_test, lengths_test)
-                    if log_L > best_score:
-                        best_score = log_L
-                        best_model = model
-                except ValueError:
-                    pass
-                    #print('exception in SelectorCV')
-                
+            try:
+                if len(self.sequences) < split_method.n_splits:
+                    continue;
+
+                for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
+                    folds +=1
+                    X_train, lengths_train = combine_sequences(cv_train_idx, self.sequences)
+                    X_test, lengths_test = combine_sequences(cv_test_idx, self.sequences)
+                    model = GaussianHMM(n_components=num_of_states ,  n_iter=1000).fit(X_train,lengths_train)
+                    fold_score = model.score(X_test,lengths_test)
+
+                    # total_logL += fold_score
+                    # avg_logL = total_logL / folds
+
+                total_logL += fold_score
+                avg_logL = total_logL / folds
+
+                if best_score < avg_logL:
+                    best_score = avg_logL                
+                    best_model= model
+                    
+            except Exception as inst:
+                # print("Exception caught")
+                # print(type(inst))
+                # print(inst.args)
+                pass
+
         return best_model
+
+
+        #THIS IS CLOSE
+        # print('my test')
+        # best_score = float('-inf')
+        # best_model = GaussianHMM()
+        # n_splits = 3
+
+        # if len(self.sequences) < n_splits:
+        #     n_splits = len(self.sequences)
+
+        # split_method = KFold(n_splits) 
+        # #split_method = KFold()        
+        # #num_hidden_states = self.max_n_components - self.min_n_components
+        # for n_components in range(self.min_n_components, self.max_n_components + 1):
+        #     for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
+        #         #X, lengths = cv_train_idx.get_word_Xlengths(self.words)
+        #         X_train, lengths_train = combine_sequences(cv_train_idx, self.sequences)
+        #         X_test, lengths_test = combine_sequences(cv_test_idx, self.sequences)
+        #         model = GaussianHMM(n_components=n_components, covariance_type="diag", n_iter=1000,random_state=self.random_state, verbose=False).fit(self.X, self.lengths)
+        #         #model = GaussianHMM(n_components=n_components, n_iter=1000).fit(X_train, lengths_train)
+        #         try:
+        #             score = model.score(X_test, lengths_test)
+        #             if score > best_score:
+        #                 best_score = score
+        #                 best_model = model
+        #         except ValueError:
+        #             pass
+        #             #print('exception in SelectorCV')
+                
+        # return best_model
